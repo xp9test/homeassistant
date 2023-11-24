@@ -1,6 +1,6 @@
 blueprint:
   name: Nordpool price cheap expensive
-  description: This blueprints uses the nordpool integration and lets you choose howe many hours you wil define as expesive, and make automations based on that information.
+  description: This blueprints uses the nordpool integration and lets you turn on devices on the chepest hours and make automations based on that information.
   domain: automation
   input:
     grid_area:
@@ -11,8 +11,8 @@ blueprint:
           domain: sensor
           integration: nordpool
     hour_rank:
-      name: Hour rank
-      description: Hour rank
+      name: Hours on
+      description: Set the minimum of hours per day that the devices should be on
       default: 12
       selector:
         number:
@@ -21,8 +21,8 @@ blueprint:
           mode: slider
           step: 1.0
     hour_percent:
-      name: Hour persent
-      description: Hour persenmt
+      name: Hour percent
+      description: Max percent between minimum and maximum price of the day to turn on devices
       default: 50
       selector:
         number:
@@ -30,15 +30,35 @@ blueprint:
           max: 100
           mode: slider
           step: 5.0
+    allways_on:
+      name: Always on price
+      description: if the price is below this the device is always on
+      default: 0.0
+      selector:
+        number:
+          min: 0.0
+          max: 20
+          mode: slider
+          step: 0.1
+    allways_off:
+      name: Always off price
+      description: if the price is above this the device is always off
+      default: 20
+      selector:
+        number:
+          min: 0.0
+          max: 20
+          mode: slider
+          step: 0.1
     turnoff:
-      name: Expensive
-      description: Action to run on expensive
+      name: TurnOff
+      description: Actions to run to turn off devices
       default: []
       selector:
         action: {}
     turnon:
-      name: Cheap
-      description: Action to run on cheap
+      name: TurnOn
+      description: Actions to run to turn on devices
       default: []
       selector:
         action: {}
@@ -46,6 +66,8 @@ variables:
   grid_area_var: !input "grid_area"
   hour_rank_var: !input "hour_rank"
   hour_percent_var: !input "hour_percent"
+  allways_on_var: !input "allways_on"
+  allways_off_var: !input "allways_off"
 
 trigger:
   - platform: time_pattern
@@ -56,7 +78,7 @@ action:
       - conditions:
           - condition: template
             value_template: >-
-              {% set prices = state_attr('sensor.nordpool_kwh_se4_sek_3_10_025','today') | list %}
+              {% set prices = state_attr(grid_area_var,'today') | list %}
               {% set h = now().hour %}
               {% set price = prices[h] %}
               {% set sorted_prices = prices | sort %}
@@ -64,6 +86,6 @@ action:
               {% set diff = sorted_prices[23] - sorted_prices[0] %}
               {% set ratio = ( above_low / diff ) * 100 | round %}
               {% set rank = sorted_prices.index(price) + 1 %}
-              {{ (ratio | int <= hour_rank_var | int) or (rank | int <= hour_rank_var | int) }}
+              {{ (price | float < allways_off_var | float) and ((price | float <= allways_on_var | float) or (ratio | int <= hour_rank_var | int) or (rank | int <= hour_rank_var | int)) }}
         sequence: !input 'turnon'
     default: !input 'turnoff'
