@@ -1,5 +1,5 @@
 blueprint:
-  name: Nordpool price cheap expensive
+  name: Nordpool price based on off
   description: This blueprints uses the nordpool integration and lets you turn on devices on the chepest hours and make automations based on that information.
   domain: automation
   input:
@@ -32,7 +32,7 @@ blueprint:
           step: 5.0
     allways_on:
       name: Always on price
-      description: if the price is below this the device is always on
+      description: if the price is below this the device is always on (ignoring Hours on and Hour percent)
       default: 0.0
       selector:
         number:
@@ -42,7 +42,7 @@ blueprint:
           step: 0.1
     allways_off:
       name: Always off price
-      description: if the price is above this the device is always off
+      description: if the price is above this the device is always off (ignoring Hours on and Hour percent)
       default: 20
       selector:
         number:
