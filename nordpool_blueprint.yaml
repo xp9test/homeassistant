@@ -1,0 +1,69 @@
+blueprint:
+  name: Nordpool price cheap expensive
+  description: This blueprints uses the nordpool integration and lets you choose howe many hours you wil define as expesive, and make automations based on that information.
+  domain: automation
+  input:
+    grid_area:
+      name: Grid area sensor
+      description: This is your grid area sensor
+      selector:
+        entity:
+          domain: sensor
+          integration: nordpool
+    hour_rank:
+      name: Hour rank
+      description: Hour rank
+      default: 12
+      selector:
+        number:
+          min: 0.0
+          max: 24
+          mode: slider
+          step: 1.0
+    hour_percent:
+      name: Hour persent
+      description: Hour persenmt
+      default: 50
+      selector:
+        number:
+          min: 0.0
+          max: 100
+          mode: slider
+          step: 5.0
+    turnoff:
+      name: Expensive
+      description: Action to run on expensive
+      default: []
+      selector:
+        action: {}
+    turnon:
+      name: Cheap
+      description: Action to run on cheap
+      default: []
+      selector:
+        action: {}
+variables:
+  grid_area_var: !input "grid_area"
+  hour_rank_var: !input "hour_rank"
+  hour_percent_var: !input "hour_percent"
+
+trigger:
+  - platform: time_pattern
+    minutes: 0
+
+action:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: >-
+              {% set prices = state_attr('sensor.nordpool_kwh_se4_sek_3_10_025','today') | list %}
+              {% set h = now().hour %}
+              {% set price = prices[h] %}
+              {% set sorted_prices = prices | sort %}
+              {% set above_low = prices[h] - sorted_prices[0] %}
+              {% set diff = sorted_prices[23] - sorted_prices[0] %}
+              {% set ratio = ( above_low / diff ) * 100 | round %}
+              {% set rank = sorted_prices.index(price) + 1 %}
+              {{ (ratio | int <= hour_rank_var | int) or (rank | int <= hour_rank_var | int) }}
+        sequence: !input 'turnon'
+    default: !input 'turnoff'
