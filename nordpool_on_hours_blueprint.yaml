@@ -1,0 +1,162 @@
+blueprint:
+  name: Nordpool price based on/off during a period
+  description: This blueprints uses the nordpool integration and lets you turn on devices on the chepest hours in a row within a timespan and make automations based on that information.
+  domain: automation
+  input:
+    grid_area:
+      name: Grid area sensor
+      description: This is your grid area sensor
+      selector:
+        entity:
+          domain:
+          - sensor
+          integration: nordpool
+          multiple: false
+    start_hour:
+      name: Start hour
+      description: Set the hour to start to check for time period with low prices
+      default: 22
+      selector:
+        number:
+          min: 0.0
+          max: 23.0
+          mode: slider
+          step: 1.0
+    end_hour:
+      name: End hour
+      description: Set the hour to end the check for time period with low prices
+      default: 6
+      selector:
+        number:
+          min: 0.0
+          max: 23.0
+          mode: slider
+          step: 1.0
+    on_hours:
+      name: Hours on
+      description: Set the number of hours per day that the devices should be on
+      default: 3
+      selector:
+        number:
+          min: 0.0
+          max: 24.0
+          mode: slider
+          step: 1.0
+    turnon:
+      name: TurnOn
+      description: Actions to run to turn on devices
+      default: []
+      selector:
+        action: {}
+    turnoff:
+      name: TurnOff
+      description: Actions to run to turn off devices
+      default: []
+      selector:
+        action: {}
+variables:
+  grid_area_var: !input grid_area
+  hour_rank_var: !input hour_rank
+  hour_ratio_var: !input hour_ratio
+  allways_on_var: !input allways_on
+  allways_off_var: !input allways_off
+  start_minute_var: !input start_minute
+  end_minute_var: !input end_minute
+trigger:
+  - platform: time_pattern
+    minutes: !input start_minute
+  - platform: time_pattern
+    minutes: !input end_minute
+action:
+- choose:
+  - conditions:
+    - condition: template
+      value_template: >-
+        {% set current_hour = now().hour %}
+        {% set offset = 0 %}
+
+        {% if current_hour == 0 %}
+          {% if states('input_text.prices') != '' %}
+            - service: input_text.set_value
+              data_template:
+                entity_id: input_text.yesterdays_prices
+                value: "{{ states('input_text.prices') }}"
+          {% endif %}
+          - service: input_text.set_value
+            data_template:
+              entity_id: input_text.prices
+              value: ''
+          - service: input_text.set_value
+            data_template:
+              entity_id: input_text.tomorrow_prices
+              value: ''
+        {% endif %}
+
+        {% set yesterdays_prices = [] %}
+        {% if current_hour > end_hour %}
+          - service: input_text.set_value
+            data_template:
+              entity_id: input_text.yesterdays_prices
+              value: ''
+        {% elif states('input_text.yesterdays_prices') != '' %}
+          {% set offset = 24 %}
+          {% set yesterdays_prices = states('input_text.yesterdays_prices') | from_json %}
+        {% endif %}
+
+        {% set prices = states('input_text.prices') | default(state_attr(grid_area_var, 'today') | list) | from_json %}
+        {% set tomorrow_prices = [] %}
+        {% if current_hour >= 14 and states('input_text.tomorrow_prices') == '' %}
+          {% set tomorrow_prices = state_attr(grid_area_var, 'tomorrow') | list %}
+          - service: input_text.set_value
+            data_template:
+              entity_id: input_text.tomorrow_prices
+              value: "{{ tomorrow_prices | to_json }}"
+        {% elif states('input_text.tomorrow_prices') != '' %}
+          {% set tomorrow_prices = states('input_text.tomorrow_prices') | from_json %}
+        {% endif %}
+
+        {% set is_between = false %}
+        {% set hours_in = 0 %}
+        {% if start_hour <= end_hour %}
+          {% set is_between = start_hour <= current_hour <= end_hour %}
+          {% set hours_in = current_hour - start_hour %}
+        {% else %}
+          {% set is_between = start_hour <= current_hour or current_hour <= end_hour %}
+          {% set hours_in = (24 - start_hour) + current_hour %}
+        {% endif %}
+
+        {% set seton = false %}
+        {% if is_between %}
+          {% set all_prices = yesterdays_prices + prices + tomorrow_prices %}
+          {% if start_hour <= end_hour %}
+            {% set used_prices = all_prices[start_hour + offset:end_hour + offset + 1] %}
+          {% else %}
+            {% set used_prices = all_prices[end_hour:start_hour + 1 + offset] %}
+          {% endif %}
+
+          {% set new_ranks = [] %}
+          {% for i in range(used_prices | length - on_hours) %}
+            {% set rank = 0 %}
+            {% for j in range(on_hours) %}
+              {% set rank = rank + used_prices | sort.index(used_prices[j]) + 1 %}
+            {% endfor %}
+            {% set new_ranks = new_ranks + [rank] %}
+          {% endfor %}
+
+          {% set lowest_rank = new_ranks | sort | first %}
+          {% set final_ranks = [] %}
+          {% for r in new_ranks %}
+            {% if r == lowest_rank %}
+              {% for j in range(on_hours) %}
+                {% set final_ranks = final_ranks + [1] %}
+              {% endfor %}
+            {% else %}
+              {% set final_ranks = final_ranks + [2] %}
+            {% endif %}
+          {% endfor %}
+          {% set seton = final_ranks[hours_in] == 1 %}
+          {% set seton = final_ranks[hours_in] == 1 %}
+        {% endif %}
+        {{ seton }}
+    sequence: !input turnon
+  default: !input turnoff
