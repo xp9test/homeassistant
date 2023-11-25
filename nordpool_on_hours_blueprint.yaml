@@ -129,10 +129,11 @@ action:
           {% endif %}
 
           {% set new_ranks = [] %}
+          {% set sorted_used_prices = used_prices | sort %}
           {% for i in range(used_prices | length - on_hours_var) %}
             {% set rank = 0 %}
             {% for j in range(on_hours_var) %}
-              {% set rank = rank + used_prices | sort.index(used_prices[j]) + 1 %}
+              {% set rank = rank + sorted_used_prices.index(used_prices[i+j]) + 1 %}
             {% endfor %}
             {% set new_ranks = new_ranks + [rank] %}
           {% endfor %}
@@ -148,7 +149,6 @@ action:
               {% set final_ranks = final_ranks + [2] %}
             {% endif %}
           {% endfor %}
-          {% set seton = final_ranks[hours_in] == 1 %}
           {% set seton = final_ranks[hours_in] == 1 %}
         {% endif %}
         {{ seton }}
