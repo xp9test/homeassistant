@@ -55,6 +55,7 @@ blueprint:
       selector:
         action: {}
 variables:
+  grid_area_var: !input grid_area
   start_hour_var: !input start_hour
   end_hour_var: !input end_hour
   on_hours_var: !input on_hours
