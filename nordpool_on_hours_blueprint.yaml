@@ -152,6 +152,19 @@ action:
           {% endfor %}
           {% set seton = final_ranks[hours_in] == 1 %}
         {% endif %}
+        {# --- DEBUG OUTPUT START --- #}
+        Start hour: {{ start_hour_var }}
+        End hour: {{ end_hour_var }}
+        On hours: {{ on_hours_var }}
+        Current hour: {{ current_hour }}
+        Prices slice length: {{ used_prices | length if used_prices is defined else 'undefined' }}
+        Prices slice: {{ used_prices if used_prices is defined else 'undefined' }}
+        Yesterday prices length: {{ yesterdays_prices | length }}
+        Today prices length: {{ prices | length }}
+        Tomorrow prices length: {{ tomorrow_prices | length }}
+
+        Set on: {{ seton }}
+        {# --- DEBUG OUTPUT END --- #}
         {{ seton }}
     sequence: !input turnon
   default: !input turnoff
