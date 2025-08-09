@@ -171,3 +171,6 @@ action:
           (states('input_text.tomorrow_prices') | from_json(default=[]))
         )[start_hour_var:end_hour_var + 1]
       }}
+      Yesterday prices length: {{ (states('input_text.yesterdays_prices') | from_json(default=[])) | length }}
+      Today prices length: {{ (states('input_text.prices') | from_json(default=[])) | length }}
+      Tomorrow prices length: {{ (states('input_text.tomorrow_prices') | from_json(default=[])) | length }}
