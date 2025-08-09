@@ -126,7 +126,7 @@ action:
           {% if start_hour_var <= end_hour_var %}
             {% set used_prices = all_prices[start_hour_var + offset:end_hour_var + offset + 1] %}
           {% else %}
-            {% set used_prices = all_prices[end_hour_var:start_hour_var + 1 + offset] %}
+            {% set used_prices = (all_prices[start_hour_var + offset : 24 + offset] + all_prices[0 : end_hour_var + 1]) %}
           {% endif %}
 
           {% set new_ranks = [] %}
